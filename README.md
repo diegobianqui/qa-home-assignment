@@ -14,7 +14,7 @@ The assignment brief (`HQA_Take_Home_Task.pdf`) and the feature spec
 | A1: Test plan (6 prioritised scenarios) | [docs/test-plan.md](docs/test-plan.md) |
 | A2: Execution results and bug reports | [docs/execution-results.md](docs/execution-results.md) |
 | B: Automation (1 UI + 1 API test) | [automation/](automation/) |
-| C: Strategy note | [docs/strategy-and-recommendations.md](docs/strategy-and-recommendations.md) |
+| C: Test strategy and recommendations | [docs/strategy-and-recommendations.md](docs/strategy-and-recommendations.md) |
 | Screenshots and test run output | [docs/evidence/](docs/evidence/) |
 
 ## Short summary
@@ -84,7 +84,7 @@ Fixtures in `conftest.py`:
 - `reset_balance` resets the balance before and after each test, so tests don't depend on each other
 
 Why these two tests were picked is explained in the docstring of each test and in the
-[strategy note](docs/strategy-and-recommendations.md).
+[test strategy, section 11](docs/strategy-and-recommendations.md#11-automation-approach).
 
 ## Tools used
 
