@@ -8,12 +8,26 @@ Set HEADLESS=1 to run the browser without a visible window, for example in CI.
 """
 import os
 
+import allure
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 from api.client import BettingApiClient
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    drv = item.funcargs.get("driver")
+    if report.when == "call" and report.failed and drv is not None:
+        allure.attach(
+            drv.get_screenshot_as_png(),
+            name="screenshot-on-failure",
+            attachment_type=allure.attachment_type.PNG,
+        )
 
 
 @pytest.fixture

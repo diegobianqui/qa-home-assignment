@@ -4,8 +4,8 @@ __pycache__/
 .pytest_cache/
 venv/
 .venv/
-allure-results/
-allure-report/
+automation/allure-results/
+automation/allure-report/
 .DS_Store
 
 # Local editor/tooling config, not part of the submission

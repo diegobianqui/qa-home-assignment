@@ -32,8 +32,8 @@ of €24.50.
 - **Step 5 failed.** The receipt read: `Bet ID #B-50786, MATCH Chelsea vs Manchester Utd, STAKE €10.00, ODDS 2.45, Potential Payout €20.00`. The payout is wrong (BUG-06) and the teams are the wrong way round (BUG-07).
 - **Step 6 failed.** The header still showed the old balance. `GET /api/balance` returned 110, and the header only updated after a page reload (BUG-01).
 
-Evidence: [receipt](evidence/BUG-01_receipt_balance_not_refreshed.png),
-[after reload](evidence/BUG-01_balance_after_reload.png), [pytest run](evidence/pytest-run.txt)
+Evidence: [receipt](evidence/manual/BUG-01_receipt_balance_not_refreshed.png),
+[after reload](evidence/manual/BUG-01_balance_after_reload.png), [pytest run](evidence/automated/pytest-run.txt)
 
 ### TC-02: Stake at the minimum boundary (PASS)
 
@@ -46,7 +46,7 @@ Evidence: [receipt](evidence/BUG-01_receipt_balance_not_refreshed.png),
 | API `1.00` | 200, balance down by €1.00 | Same |
 
 This settles the spec conflict: the minimum stake is €1.00.
-Evidence: [0.99 blocked](evidence/TC-02_min_stake_0.99_blocked.png)
+Evidence: [0.99 blocked](evidence/manual/TC-02_min_stake_0.99_blocked.png)
 
 ### TC-04: Stake higher than the balance (UI PASS, API FAIL)
 
@@ -55,14 +55,14 @@ After a €100.00 bet the balance was €20.00, as expected.
 - **UI:** entering €50.00 showed "Insufficient balance" and disabled **Place Bet**. Pass.
 - **API:** `POST /api/place-bet` with `stake: 50` returned HTTP 200 with `"balance": -30`. The balance went to -€30.00. Fail (BUG-02).
 
-Evidence: [UI blocked](evidence/TC-04_ui_insufficient_balance_blocked.png),
-[pytest run](evidence/pytest-run.txt)
+Evidence: [UI blocked](evidence/manual/TC-04_ui_insufficient_balance_blocked.png),
+[pytest run](evidence/automated/pytest-run.txt)
 
 ### Extra check: TC-03 maximum stake
 
 This is outside the top three, but I checked it quickly. The UI blocks €100.01 with "Maximum
 stake is €100.00", and the API returns 422 `invalid_stake_max`. No bug found.
-Evidence: [100.01 blocked](evidence/TC-03_max_stake_100.01_blocked.png)
+Evidence: [100.01 blocked](evidence/manual/TC-03_max_stake_100.01_blocked.png)
 
 ## Exploratory session
 
@@ -103,8 +103,8 @@ What worked: `10.999` is rejected with `invalid_stake_precision`, `"10"` and `nu
 **Business Impact:** Users see the wrong balance. They may place bets they think they can
 afford, or contact support thinking the bet failed.
 
-**Evidence:** [receipt](evidence/BUG-01_receipt_balance_not_refreshed.png),
-[after reload](evidence/BUG-01_balance_after_reload.png)
+**Evidence:** [receipt](evidence/manual/BUG-01_receipt_balance_not_refreshed.png),
+[after reload](evidence/manual/BUG-01_balance_after_reload.png)
 
 ### BUG-02: API lets a stake go above the balance (negative balance)
 
@@ -124,7 +124,7 @@ afford, or contact support thinking the bet failed.
 **Business Impact:** The balance check only exists in the UI. Anyone calling the API
 directly can bet money they don't have, which is a direct financial loss.
 
-**Evidence:** [pytest run](evidence/pytest-run.txt)
+**Evidence:** [pytest run](evidence/automated/pytest-run.txt)
 
 ### BUG-03: API accepts a negative stake
 
@@ -161,7 +161,7 @@ door to balance manipulation.
 **Business Impact:** Any client or report that reads the currency from the response will show
 or reconcile amounts in the wrong currency.
 
-**Evidence:** the response body is quoted in the BUG-02 failure in the [pytest run](evidence/pytest-run.txt)
+**Evidence:** the response body is quoted in the BUG-02 failure in the [pytest run](evidence/automated/pytest-run.txt). No automated test asserts the currency.
 
 ### BUG-05: Reset gives a different balance than the one actually saved
 
@@ -198,8 +198,8 @@ response also can't be trusted, so test setup has to read `/balance` instead.
 **Business Impact:** The receipt shows the wrong potential winnings. That is a customer trust
 problem and possibly a regulatory one. The bet slip preview and the API `payout` field are correct, so only the receipt is wrong.
 
-**Evidence:** [receipt](evidence/BUG-01_receipt_balance_not_refreshed.png),
-[pytest run](evidence/pytest-run.txt)
+**Evidence:** [receipt](evidence/manual/BUG-01_receipt_balance_not_refreshed.png),
+[pytest run](evidence/automated/pytest-run.txt)
 
 ### BUG-07: Receipt shows the teams in the wrong order
 
@@ -217,12 +217,18 @@ problem and possibly a regulatory one. The bet slip preview and the API `payout`
 **Business Impact:** Together with the selection "HOME", this makes it unclear which team the
 user actually backed.
 
-**Evidence:** [receipt](evidence/BUG-01_receipt_balance_not_refreshed.png),
-[pytest run](evidence/pytest-run.txt)
+**Evidence:** [receipt](evidence/manual/BUG-01_receipt_balance_not_refreshed.png),
+[pytest run](evidence/automated/pytest-run.txt)
 
 ## Automated run
 
-Command: `HEADLESS=1 pytest` (from `automation/`). Full output: [pytest-run.txt](evidence/pytest-run.txt)
+Command: `HEADLESS=1 pytest` (from `automation/`). Allure results are written to
+`automation/allure-results` on every run.
+
+- Console output: [pytest-run.txt](evidence/automated/pytest-run.txt)
+- Allure report (single HTML file, open in a browser): [allure-report/index.html](evidence/automated/allure-report/index.html).
+  It includes steps, the receipt text, the place-bet response body and a screenshot taken
+  automatically when the UI test fails.
 
 | Test | Covers | Result | Why |
 |---|---|---|---|
@@ -231,3 +237,20 @@ Command: `HEADLESS=1 pytest` (from `automation/`). Full output: [pytest-run.txt]
 
 Both failures are real bugs that match the manual results. The tests will pass once the bugs
 are fixed.
+
+## Evidence index
+
+Evidence is split by how it was produced.
+
+| File | Type | Test | Shows |
+|---|---|---|---|
+| [manual/BUG-01_receipt_balance_not_refreshed.png](evidence/manual/BUG-01_receipt_balance_not_refreshed.png) | Manual | TC-01 | BUG-01, BUG-06, BUG-07 |
+| [manual/BUG-01_balance_after_reload.png](evidence/manual/BUG-01_balance_after_reload.png) | Manual | TC-01 | BUG-01 (balance correct only after reload) |
+| [manual/TC-02_min_stake_0.99_blocked.png](evidence/manual/TC-02_min_stake_0.99_blocked.png) | Manual | TC-02 | PASS |
+| [manual/TC-03_max_stake_100.01_blocked.png](evidence/manual/TC-03_max_stake_100.01_blocked.png) | Manual | TC-03 | PASS |
+| [manual/TC-04_ui_insufficient_balance_blocked.png](evidence/manual/TC-04_ui_insufficient_balance_blocked.png) | Manual | TC-04 (UI) | PASS |
+| [automated/pytest-run.txt](evidence/automated/pytest-run.txt) | Automated | TC-01, TC-04 (API) | BUG-01, BUG-02, BUG-06, BUG-07 (asserted); BUG-04 visible in the quoted response body, not asserted |
+| [automated/allure-report/index.html](evidence/automated/allure-report/index.html) | Automated | TC-01, TC-04 (API) | Same run, with steps and attachments |
+
+BUG-03 and BUG-05 were found in exploratory API checks. Their evidence is the request and
+response quoted in the bug reports above.

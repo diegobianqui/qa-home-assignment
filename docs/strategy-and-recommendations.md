@@ -215,7 +215,8 @@ are recorded separately as open questions and are not counted as bugs.
 - Residual risk: scenarios not executed and open questions.
 
 The results are reported in [execution-results.md](execution-results.md). Evidence is stored
-in [evidence/](evidence/).
+in [evidence/](evidence/), split into `manual/` (screenshots from manual execution) and
+`automated/` (pytest output and the Allure report).
 
 ## 14. Project risks
 

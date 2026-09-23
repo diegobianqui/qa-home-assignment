@@ -1,26 +1,41 @@
-FF                                                                       [100%]
+============================= test session starts ==============================
+platform darwin -- Python 3.14.3, pytest-8.3.3, pluggy-1.6.0
+rootdir: /Users/dev/Downloads/qa-home-assignment/automation
+configfile: pytest.ini
+plugins: allure-pytest-2.13.5
+collected 2 items
+
+tests/test_api_stake_validation.py F                                     [ 50%]
+tests/test_e2e_bet_placement.py F                                        [100%]
+
 =================================== FAILURES ===================================
 ___________________ test_stake_exceeding_balance_is_rejected ___________________
 
-api_client = <api.client.BettingApiClient object at 0x1082242f0>
+api_client = <api.client.BettingApiClient object at 0x107ced160>
 reset_balance = None
 
+    @allure.feature("Single Bet Placement")
+    @allure.story("TC-04 Stake above balance (API)")
+    @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.critical
     def test_stake_exceeding_balance_is_rejected(api_client, reset_balance):
-        matches = api_client.get_matches().json()
-        assert matches, "GET /api/matches returned no matches; precondition not met."
-        match_id = matches[0]["id"]
+        with allure.step(f"Precondition: lower the balance with a €{PRECONDITION_STAKE:.2f} bet"):
+            matches = api_client.get_matches().json()
+            assert matches, "GET /api/matches returned no matches; precondition not met."
+            match_id = matches[0]["id"]
     
-        setup = api_client.place_bet(match_id=match_id, selection="HOME", stake=PRECONDITION_STAKE)
-        assert setup.status_code == 200, f"Precondition bet failed: {setup.status_code} {setup.text}"
-        balance_before = api_client.get_balance().json()["balance"]
-        assert 0 < balance_before < OVER_BALANCE_STAKE, (
-            f"Precondition not met: balance {balance_before} must be below the test stake."
-        )
+            setup = api_client.place_bet(match_id=match_id, selection="HOME", stake=PRECONDITION_STAKE)
+            assert setup.status_code == 200, f"Precondition bet failed: {setup.status_code} {setup.text}"
+            balance_before = api_client.get_balance().json()["balance"]
+            assert 0 < balance_before < OVER_BALANCE_STAKE, (
+                f"Precondition not met: balance {balance_before} must be below the test stake."
+            )
     
-        response = api_client.place_bet(match_id=match_id, selection="HOME", stake=OVER_BALANCE_STAKE)
-        balance_after = api_client.get_balance().json()["balance"]
+        with allure.step(f"Place a €{OVER_BALANCE_STAKE:.2f} bet above the balance"):
+            response = api_client.place_bet(match_id=match_id, selection="HOME", stake=OVER_BALANCE_STAKE)
+            balance_after = api_client.get_balance().json()["balance"]
+        allure.attach(response.text, name="place-bet-response", attachment_type=allure.attachment_type.JSON)
     
 >       assert response.status_code == 422, (
             f"BUG-02: stake €{OVER_BALANCE_STAKE:.2f} exceeds balance €{balance_before:.2f} "
@@ -31,12 +46,15 @@ E       AssertionError: BUG-02: stake €50.00 exceeds balance €20.00 but the 
 E       assert 200 == 422
 E        +  where 200 = <Response [200]>.status_code
 
-tests/test_api_stake_validation.py:36: AssertionError
+tests/test_api_stake_validation.py:43: AssertionError
 ____________ test_valid_bet_placement_succeeds_and_updates_balance _____________
 
-driver = <selenium.webdriver.chrome.webdriver.WebDriver (session="e2f5ba8d2c31b298ee9e1058465ea3e6")>
+driver = <selenium.webdriver.chrome.webdriver.WebDriver (session="ff0716a40b550b95a80bb4f1371d18e3")>
 reset_balance = None
 
+    @allure.feature("Single Bet Placement")
+    @allure.story("TC-01 Valid bet placement (UI)")
+    @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.e2e
     @pytest.mark.critical
     def test_valid_bet_placement_succeeds_and_updates_balance(driver, reset_balance):
@@ -44,12 +62,15 @@ reset_balance = None
         bet_slip = BetSlipPage(driver)
         expected_payout = f"€{float(STAKE) * HOME_ODDS:.2f}"
     
-        matches_page.load().select_first_match_home_odds()
-        balance_before = bet_slip.current_balance()
+        with allure.step("Select HOME odds of the first match"):
+            matches_page.load().select_first_match_home_odds()
+            balance_before = bet_slip.current_balance()
     
-        bet_slip.enter_stake(STAKE).place_bet()
-        receipt = bet_slip.wait_for_receipt()
-        balance_after = bet_slip.wait_for_balance_change(balance_before)
+        with allure.step(f"Enter stake €{STAKE} and place the bet"):
+            bet_slip.enter_stake(STAKE).place_bet()
+            receipt = bet_slip.wait_for_receipt()
+            balance_after = bet_slip.wait_for_balance_change(balance_before)
+        allure.attach(receipt, name="receipt-text", attachment_type=allure.attachment_type.TEXT)
     
         deviations = []
         if not re.search(r"#B-\d+", receipt):
@@ -77,11 +98,11 @@ E       AssertionError: TC-01 deviations:
 E         - BUG-06: receipt potential payout is not €24.50 (stake x odds 2.45).
 E         - BUG-07: receipt does not show 'Manchester Utd vs Chelsea'.
 E         - BUG-01: header balance went from €120.00 to €120.00; expected a reduction of €10.00.
-E         Receipt text: Bet Placed Successfully! | Bet ID | #B-12527 | MATCH | Chelsea vs Manchester Utd | STAKE | €10.00 | ODDS | 2.45 | Potential Payout | €20.00 | TODAY, 06:25 PM | CLOSE
+E         Receipt text: Bet Placed Successfully! | Bet ID | #B-84843 | MATCH | Chelsea vs Manchester Utd | STAKE | €10.00 | ODDS | 2.45 | Potential Payout | €20.00 | TODAY, 07:50 PM | CLOSE
 E       assert not ['BUG-06: receipt potential payout is not €24.50 (stake x odds 2.45).', "BUG-07: receipt does not show 'Manchester Utd vs Chelsea'.", 'BUG-01: header balance went from €120.00 to €120.00; expected a reduction of €10.00.']
 
-tests/test_e2e_bet_placement.py:58: AssertionError
+tests/test_e2e_bet_placement.py:65: AssertionError
 =========================== short test summary info ============================
 FAILED tests/test_api_stake_validation.py::test_stake_exceeding_balance_is_rejected
 FAILED tests/test_e2e_bet_placement.py::test_valid_bet_placement_succeeds_and_updates_balance
-2 failed in 20.73s
+============================== 2 failed in 23.62s ==============================

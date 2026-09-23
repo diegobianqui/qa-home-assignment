@@ -15,7 +15,8 @@ The assignment brief (`HQA_Take_Home_Task.pdf`) and the feature spec
 | A2: Execution results and bug reports | [docs/execution-results.md](docs/execution-results.md) |
 | B: Automation (1 UI + 1 API test) | [automation/](automation/) |
 | C: Test strategy and recommendations | [docs/strategy-and-recommendations.md](docs/strategy-and-recommendations.md) |
-| Screenshots and test run output | [docs/evidence/](docs/evidence/) |
+| Manual evidence (screenshots) | [docs/evidence/manual/](docs/evidence/manual/) |
+| Automated evidence (pytest output, Allure report) | [docs/evidence/automated/](docs/evidence/automated/) |
 
 ## Short summary
 
@@ -46,9 +47,13 @@ Run these from the `automation/` folder:
 | All tests, no browser window | `HEADLESS=1 pytest` |
 | UI test only | `pytest -m e2e` |
 | API test only | `pytest -m api` |
-| Allure report | `pytest --alluredir=allure-results`, then `allure serve allure-results` |
+| Allure report | `pytest`, then `allure serve allure-results` |
 
-The Allure report is optional and needs the Allure command line tool installed separately.
+Every run writes Allure results to `automation/allure-results` (set in `pytest.ini`). When
+the UI test fails, a screenshot is attached to the report automatically. Viewing the report
+needs the Allure command line tool, installed separately. A report from the last run is
+committed as a single HTML file:
+[docs/evidence/automated/allure-report/index.html](docs/evidence/automated/allure-report/index.html).
 
 ### Expected result: both tests fail
 
@@ -59,7 +64,7 @@ This is on purpose. Both tests catch real bugs in the app:
 
 Each failure message starts with the bug ID, so you can find it in the bug reports. Once
 the bugs are fixed, the tests should pass. Example output:
-[docs/evidence/pytest-run.txt](docs/evidence/pytest-run.txt).
+[docs/evidence/automated/pytest-run.txt](docs/evidence/automated/pytest-run.txt).
 
 ## How the automation is organised
 

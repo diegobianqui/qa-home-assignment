@@ -12,6 +12,7 @@ first failure.
 """
 import re
 
+import allure
 import pytest
 
 from pages.bet_slip_page import BetSlipPage
@@ -23,6 +24,9 @@ AWAY_TEAM = "Chelsea"
 HOME_ODDS = 2.45
 
 
+@allure.feature("Single Bet Placement")
+@allure.story("TC-01 Valid bet placement (UI)")
+@allure.severity(allure.severity_level.CRITICAL)
 @pytest.mark.e2e
 @pytest.mark.critical
 def test_valid_bet_placement_succeeds_and_updates_balance(driver, reset_balance):
@@ -30,12 +34,15 @@ def test_valid_bet_placement_succeeds_and_updates_balance(driver, reset_balance)
     bet_slip = BetSlipPage(driver)
     expected_payout = f"€{float(STAKE) * HOME_ODDS:.2f}"
 
-    matches_page.load().select_first_match_home_odds()
-    balance_before = bet_slip.current_balance()
+    with allure.step("Select HOME odds of the first match"):
+        matches_page.load().select_first_match_home_odds()
+        balance_before = bet_slip.current_balance()
 
-    bet_slip.enter_stake(STAKE).place_bet()
-    receipt = bet_slip.wait_for_receipt()
-    balance_after = bet_slip.wait_for_balance_change(balance_before)
+    with allure.step(f"Enter stake €{STAKE} and place the bet"):
+        bet_slip.enter_stake(STAKE).place_bet()
+        receipt = bet_slip.wait_for_receipt()
+        balance_after = bet_slip.wait_for_balance_change(balance_before)
+    allure.attach(receipt, name="receipt-text", attachment_type=allure.attachment_type.TEXT)
 
     deviations = []
     if not re.search(r"#B-\d+", receipt):
