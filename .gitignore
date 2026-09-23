@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+venv/
+.venv/
+allure-results/
+allure-report/
+.DS_Store
+
+# Local editor/tooling config, not part of the submission
+.github/
+.vscode/
+.npmrc
+
+# Assignment PDFs are not published
+*.pdf

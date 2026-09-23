@@ -1,0 +1,47 @@
+"""
+Shared pytest fixtures.
+
+They handle the browser, the API client and the balance reset, so the tests themselves
+only contain test steps and checks.
+
+Set HEADLESS=1 to run the browser without a visible window, for example in CI.
+"""
+import os
+
+import pytest
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
+from api.client import BettingApiClient
+
+
+@pytest.fixture
+def driver():
+    options = webdriver.ChromeOptions()
+    if os.getenv("HEADLESS", "").lower() in ("1", "true"):
+        options.add_argument("--headless=new")
+        options.add_argument("--window-size=1920,1080")
+    else:
+        options.add_argument("--start-maximized")
+    service = Service(ChromeDriverManager().install())
+    drv = webdriver.Chrome(service=service, options=options)
+    yield drv
+    drv.quit()
+
+
+@pytest.fixture
+def api_client():
+    return BettingApiClient()
+
+
+@pytest.fixture
+def reset_balance(api_client):
+    """
+    Resets the balance with POST /api/reset-balance before and after each test
+    (the live app resets it to €120.00, see BUG-05). This way the tests don't depend
+    on each other or on the order they run in.
+    """
+    api_client.reset_balance()
+    yield
+    api_client.reset_balance()
