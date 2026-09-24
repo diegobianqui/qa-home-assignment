@@ -230,13 +230,19 @@ Command: `HEADLESS=1 pytest` (from `automation/`). Allure results are written to
   It includes steps, the receipt text, the place-bet response body and a screenshot taken
   automatically when the UI test fails.
 
-| Test | Covers | Result | Why |
-|---|---|---|---|
-| `test_e2e_bet_placement.py` | TC-01 | FAIL | BUG-06, BUG-07, BUG-01 |
-| `test_api_stake_validation.py` | TC-04 (API) | FAIL | BUG-02 |
+| Test | Covers | Result | Deviations reported | Maps to |
+|---|---|---|---|---|
+| `test_e2e_bet_placement.py` | TC-01 | FAIL | Payout, match order, header balance | BUG-06, BUG-07, BUG-01 |
+| `test_api_stake_validation.py` | TC-04 (API) | FAIL | HTTP 200 instead of 422 | BUG-02 |
 
-Both failures are real bugs that match the manual results. The tests will pass once the bugs
-are fixed.
+The tests do not know about the defects. Each check compares the live result with a value
+derived from the specification (stake x odds, home team first, balance minus stake, HTTP 422)
+and the failure message reports expected versus actual. The mapping to bug IDs in the last
+column was done afterwards, during triage, and lives only in this document. Allure groups
+the failures itself through `categories.json` (written by `conftest.py`): assertion failures
+go to "Product defects", other exceptions to "Test or environment errors".
+
+Both failures match the manual results. The tests will pass once the bugs are fixed.
 
 ## Evidence index
 

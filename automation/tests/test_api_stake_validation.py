@@ -41,9 +41,9 @@ def test_stake_exceeding_balance_is_rejected(api_client, reset_balance):
     allure.attach(response.text, name="place-bet-response", attachment_type=allure.attachment_type.JSON)
 
     assert response.status_code == 422, (
-        f"BUG-02: stake €{OVER_BALANCE_STAKE:.2f} exceeds balance €{balance_before:.2f} "
-        f"but the API returned {response.status_code} (expected 422). "
-        f"Balance is now €{balance_after:.2f}. Response: {response.text}"
+        f"Stake €{OVER_BALANCE_STAKE:.2f} above balance €{balance_before:.2f}: expected HTTP 422, "
+        f"actual {response.status_code}. Balance is now €{balance_after:.2f}. "
+        f"Response: {response.text}"
     )
     assert response.json().get("error") != "invalid_stake_max", (
         "The request was rejected by the maximum-stake rule, not the balance rule."

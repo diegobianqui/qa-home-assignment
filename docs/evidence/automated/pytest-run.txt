@@ -11,7 +11,7 @@ tests/test_e2e_bet_placement.py F                                        [100%]
 =================================== FAILURES ===================================
 ___________________ test_stake_exceeding_balance_is_rejected ___________________
 
-api_client = <api.client.BettingApiClient object at 0x107ced160>
+api_client = <api.client.BettingApiClient object at 0x10a291400>
 reset_balance = None
 
     @allure.feature("Single Bet Placement")
@@ -38,18 +38,18 @@ reset_balance = None
         allure.attach(response.text, name="place-bet-response", attachment_type=allure.attachment_type.JSON)
     
 >       assert response.status_code == 422, (
-            f"BUG-02: stake €{OVER_BALANCE_STAKE:.2f} exceeds balance €{balance_before:.2f} "
-            f"but the API returned {response.status_code} (expected 422). "
-            f"Balance is now €{balance_after:.2f}. Response: {response.text}"
+            f"Stake €{OVER_BALANCE_STAKE:.2f} above balance €{balance_before:.2f}: expected HTTP 422, "
+            f"actual {response.status_code}. Balance is now €{balance_after:.2f}. "
+            f"Response: {response.text}"
         )
-E       AssertionError: BUG-02: stake €50.00 exceeds balance €20.00 but the API returned 200 (expected 422). Balance is now €-30.00. Response: {"message":"Bet placed successfully","matchId":"premier-league-manutd-chelsea","selection":"HOME","stake":50,"odds":2.45,"payout":122.5,"balance":-30,"currency":"USD"}
+E       AssertionError: Stake €50.00 above balance €20.00: expected HTTP 422, actual 200. Balance is now €-30.00. Response: {"message":"Bet placed successfully","matchId":"premier-league-manutd-chelsea","selection":"HOME","stake":50,"odds":2.45,"payout":122.5,"balance":-30,"currency":"USD"}
 E       assert 200 == 422
 E        +  where 200 = <Response [200]>.status_code
 
 tests/test_api_stake_validation.py:43: AssertionError
 ____________ test_valid_bet_placement_succeeds_and_updates_balance _____________
 
-driver = <selenium.webdriver.chrome.webdriver.WebDriver (session="ff0716a40b550b95a80bb4f1371d18e3")>
+driver = <selenium.webdriver.chrome.webdriver.WebDriver (session="72c6d290861f4be88447e49fb87b95b0")>
 reset_balance = None
 
     @allure.feature("Single Bet Placement")
@@ -72,22 +72,30 @@ reset_balance = None
             balance_after = bet_slip.wait_for_balance_change(balance_before)
         allure.attach(receipt, name="receipt-text", attachment_type=allure.attachment_type.TEXT)
     
+        expected_match = f"{HOME_TEAM} vs {AWAY_TEAM}"
+        expected_balance = round(balance_before - float(STAKE), 2)
+        payout_found = re.search(r"Potential Payout\s*(€[\d.,]+)", receipt)
+        match_found = re.search(r"MATCH\s*\n?\s*(.+)", receipt)
+    
         deviations = []
         if not re.search(r"#B-\d+", receipt):
-            deviations.append("Receipt does not show a bet ID (#B-nnnnn).")
+            deviations.append("Receipt bet ID: expected '#B-nnnnn', not found.")
         if f"€{STAKE}" not in receipt:
-            deviations.append(f"Receipt does not show the stake €{STAKE}.")
+            deviations.append(f"Receipt stake: expected €{STAKE}, not found.")
         if expected_payout not in receipt:
             deviations.append(
-                f"BUG-06: receipt potential payout is not {expected_payout} "
-                f"(stake x odds {HOME_ODDS})."
+                f"Receipt potential payout: expected {expected_payout} (stake €{STAKE} x odds "
+                f"{HOME_ODDS}), actual {payout_found.group(1) if payout_found else 'not found'}."
             )
-        if f"{HOME_TEAM} vs {AWAY_TEAM}" not in receipt:
-            deviations.append(f"BUG-07: receipt does not show '{HOME_TEAM} vs {AWAY_TEAM}'.")
-        if round(balance_before - balance_after, 2) != float(STAKE):
+        if expected_match not in receipt:
             deviations.append(
-                f"BUG-01: header balance went from €{balance_before:.2f} to "
-                f"€{balance_after:.2f}; expected a reduction of €{STAKE}."
+                f"Receipt match: expected '{expected_match}' (home team first), "
+                f"actual '{match_found.group(1).strip() if match_found else 'not found'}'."
+            )
+        if round(balance_after, 2) != expected_balance:
+            deviations.append(
+                f"Header balance after bet: expected €{expected_balance:.2f} "
+                f"(€{balance_before:.2f} - €{STAKE}), actual €{balance_after:.2f}."
             )
     
 >       assert not deviations, (
@@ -95,14 +103,14 @@ reset_balance = None
             + "\nReceipt text: " + receipt.replace("\n", " | ")
         )
 E       AssertionError: TC-01 deviations:
-E         - BUG-06: receipt potential payout is not €24.50 (stake x odds 2.45).
-E         - BUG-07: receipt does not show 'Manchester Utd vs Chelsea'.
-E         - BUG-01: header balance went from €120.00 to €120.00; expected a reduction of €10.00.
-E         Receipt text: Bet Placed Successfully! | Bet ID | #B-84843 | MATCH | Chelsea vs Manchester Utd | STAKE | €10.00 | ODDS | 2.45 | Potential Payout | €20.00 | TODAY, 07:50 PM | CLOSE
-E       assert not ['BUG-06: receipt potential payout is not €24.50 (stake x odds 2.45).', "BUG-07: receipt does not show 'Manchester Utd vs Chelsea'.", 'BUG-01: header balance went from €120.00 to €120.00; expected a reduction of €10.00.']
+E         - Receipt potential payout: expected €24.50 (stake €10.00 x odds 2.45), actual €20.00.
+E         - Receipt match: expected 'Manchester Utd vs Chelsea' (home team first), actual 'Chelsea vs Manchester Utd'.
+E         - Header balance after bet: expected €110.00 (€120.00 - €10.00), actual €120.00.
+E         Receipt text: Bet Placed Successfully! | Bet ID | #B-58300 | MATCH | Chelsea vs Manchester Utd | STAKE | €10.00 | ODDS | 2.45 | Potential Payout | €20.00 | TODAY, 09:06 PM | CLOSE
+E       assert not ['Receipt potential payout: expected €24.50 (stake €10.00 x odds 2.45), actual €20.00.', "Receipt match: expected 'Man...actual 'Chelsea vs Manchester Utd'.", 'Header balance after bet: expected €110.00 (€120.00 - €10.00), actual €120.00.']
 
-tests/test_e2e_bet_placement.py:65: AssertionError
+tests/test_e2e_bet_placement.py:72: AssertionError
 =========================== short test summary info ============================
 FAILED tests/test_api_stake_validation.py::test_stake_exceeding_balance_is_rejected
 FAILED tests/test_e2e_bet_placement.py::test_valid_bet_placement_succeeds_and_updates_balance
-============================== 2 failed in 23.62s ==============================
+============================== 2 failed in 19.12s ==============================
