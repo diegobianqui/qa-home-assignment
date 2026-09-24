@@ -27,6 +27,7 @@ in another. The live app enforces €1.00 (see TC-02 results), so this plan uses
 | TC-04 | Stake higher than the balance | Critical | If this is accepted, users can bet money they don't have and the balance goes negative. |
 | TC-05 | Invalid stake format and type | Medium | Bad precision or types could be rounded silently or crash the service. |
 | TC-06 | Changing and removing a selection | Medium | Stale bet slip data could lead to a bet on the wrong match or at the wrong odds. |
+| TC-07 | Bet on a match that is not upcoming | Critical | A bet on a match that has already kicked off can be placed when the result is known, which is a direct financial loss. |
 
 All tests start with the balance reset through `POST /api/reset-balance` and the app opened
 at `/?user-id=<USER_ID>`.
@@ -182,3 +183,29 @@ balance, so only the balance rule can reject it.
 2. The bet slip shows only match B, with its own odds and payout. Nothing from match A is left.
 3. The bet slip is empty.
 4. The bet slip is empty, and the balance has not changed at any point.
+
+### TC-07: Bet on a match that is not upcoming
+
+- **Priority:** Critical
+- **Risk Rationale:** The spec allows only upcoming (pre-match) bets. The rule has to hold in both the UI and the API, because a bet on a finished match can be placed when the outcome is already known.
+- **Automated:** no (next candidate for the API suite)
+
+**Preconditions**
+1. Balance reset.
+2. `GET /api/matches` returns at least one match whose `kickoffDate` is before today.
+
+**Test data:** Manchester Utd vs Chelsea (`premier-league-manutd-chelsea`, kickoff 2026-02-27), HOME at 2.45, stake €1.00.
+
+**Steps**
+1. Open the match list and look for the Manchester Utd vs Chelsea card.
+2. Inspect the odds buttons on that card.
+3. Click the HOME odds, enter `1.00` and click **Place Bet**.
+4. Send `POST /api/place-bet` with `matchId: premier-league-manutd-chelsea`, `selection: HOME`, `stake: 1.00`.
+5. Send `GET /api/balance`.
+
+**Expected Result**
+1. Matches that have already kicked off are not offered under "Upcoming Football Matches".
+2. If such a match is shown, its odds are disabled.
+3. No selection is added and no bet is placed.
+4. The API rejects the bet with a 4xx status and no bet is created. The spec gives no error code for this case, so only the rejection is asserted.
+5. The balance has not changed.

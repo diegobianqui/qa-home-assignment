@@ -20,9 +20,10 @@ The assignment brief (`HQA_Take_Home_Task.pdf`) and the feature spec
 
 ## Short summary
 
-I ran the top three scenarios plus a short exploratory session and found 7 bugs. The most
-serious ones are on the API side: it accepts a stake above the balance (the balance goes
-negative) and it accepts negative stakes. The receipt also shows the wrong payout and team
+I ran the top three scenarios, a follow-up scenario on past matches, and a short
+exploratory session, and found 8 bugs. The most serious ones are Critical: the API accepts
+a stake above the balance (the balance goes negative), it accepts negative stakes, and
+both the UI and the API accept bets on matches that have already kicked off. The receipt also shows the wrong payout and team
 order, and the header balance doesn't update after a bet. Details are in
 [execution-results.md](docs/execution-results.md).
 

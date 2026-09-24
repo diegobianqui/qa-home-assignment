@@ -11,7 +11,8 @@
 
 I ran the three highest-priority scenarios from the [test plan](test-plan.md) (TC-01,
 TC-02, TC-04), then did a 15-minute exploratory session. TC-04 was checked in both the UI
-and the API because the two layers behave differently.
+and the API because the two layers behave differently. TC-07 was added and run on
+2026-09-24 after the traceability review showed that REQ-01 had no test case.
 
 | TC | Title | Result | Bugs |
 |---|---|---|---|
@@ -19,8 +20,9 @@ and the API because the two layers behave differently.
 | TC-02 | Stake at the minimum boundary | PASS | |
 | TC-04 | Stake higher than the balance (UI) | PASS | |
 | TC-04 | Stake higher than the balance (API) | FAIL | BUG-02 |
+| TC-07 | Bet on a match that is not upcoming (UI, API) | FAIL | BUG-08 |
 
-I found 7 bugs in total: 2 Critical, 2 High, 3 Medium.
+I found 8 bugs in total: 3 Critical, 2 High, 3 Medium.
 
 ## Test runs
 
@@ -64,6 +66,20 @@ This is outside the top three, but I checked it quickly. The UI blocks €100.01
 stake is €100.00", and the API returns 422 `invalid_stake_max`. No bug found.
 Evidence: [100.01 blocked](evidence/manual/TC-03_max_stake_100.01_blocked.png)
 
+### TC-07: Bet on a match that is not upcoming (FAIL)
+
+Run on 2026-09-24. `GET /api/matches` returned 103 matches, 78 of them with a `kickoffDate`
+before the test date. The API has no status field. The "PAST" badge is added by the UI.
+
+- **Step 1 failed.** The page heading reads "Upcoming Football Matches, Showing 103 matches", and the first cards carry a "PAST" badge, starting with Manchester Utd vs Chelsea (Fri, Feb 27).
+- **Step 2 failed.** The HOME odds button on that card is enabled (`disabled` is false) and shows 2.45.
+- **Step 3 failed.** Clicking HOME added "Manchester Utd vs Chelsea, Match Winner: Home, Odds: 2.45" to the bet slip. With a €1.00 stake, **Place Bet** was enabled and the bet was accepted with receipt `#B-26631`. The receipt again showed the BUG-06 payout (€2.00) and the BUG-07 team order.
+- **Step 4 failed.** `POST /api/place-bet` returned HTTP 200 with `"message":"Bet placed successfully","matchId":"premier-league-manutd-chelsea","odds":2.45,"payout":2.45,"balance":119`.
+- **Step 5 failed.** The balance dropped from 120 to 119 after each bet. It was reset afterwards.
+
+Evidence: [past match in bet slip](evidence/manual/BUG-08_past_match_in_bet_slip.png),
+[bet accepted](evidence/manual/BUG-08_past_match_bet_accepted.png)
+
 ## Exploratory session
 
 **Goal:** try to break validation, payout and balance handling, mostly by calling the API
@@ -77,6 +93,7 @@ What I found:
 - The API accepts a negative stake (BUG-03).
 - The place-bet response says `USD`, but `/balance` says `EUR` (BUG-04).
 - Reset reports 125.5, but the balance afterwards is 120 (BUG-05).
+- Matches labelled "PAST" still have enabled odds. This led to TC-07 and BUG-08.
 
 What worked: `10.999` is rejected with `invalid_stake_precision`, `"10"` and `null` with
 `invalid_stake_type`, an unknown match with `invalid_match`, and `100.01` with
@@ -220,6 +237,30 @@ user actually backed.
 **Evidence:** [receipt](evidence/manual/BUG-01_receipt_balance_not_refreshed.png),
 [pytest run](evidence/automated/pytest-run.txt)
 
+### BUG-08: Bets are accepted on matches that have already kicked off
+
+- **Severity:** Critical
+- **Found in:** TC-07, steps 1 to 5 (UI and API)
+
+**Reproduction Steps**
+1. Reset the balance and open the app.
+2. Find Manchester Utd vs Chelsea (kickoff Fri, Feb 27, badge "PAST") at the top of "Upcoming Football Matches".
+3. Click HOME (2.45), enter `1.00` and click **Place Bet**.
+4. Send `POST /api/place-bet` with `matchId: premier-league-manutd-chelsea`, `selection: HOME`, `stake: 1.00`.
+5. Send `GET /api/balance`.
+
+**Expected vs Actual**
+- Expected: matches that have kicked off are not offered, or their odds are disabled. The API rejects the bet with a 4xx status and the balance does not change.
+- Actual: the past match is listed as upcoming with enabled odds. The UI places the bet (receipt `#B-26631`), the API returns HTTP 200 "Bet placed successfully", and the balance drops by €1.00 each time.
+
+**Business Impact:** Users can bet on matches whose result is already known. That is a
+guaranteed financial loss for the operator and an obvious route for abuse. 78 of the 103
+matches in the catalogue are affected.
+
+**Evidence:** [past match in bet slip](evidence/manual/BUG-08_past_match_in_bet_slip.png),
+[bet accepted](evidence/manual/BUG-08_past_match_bet_accepted.png), and the API response
+quoted in the TC-07 run above.
+
 ## Automated run
 
 Command: `HEADLESS=1 pytest` (from `automation/`). Allure results are written to
@@ -255,8 +296,11 @@ Evidence is split by how it was produced.
 | [manual/TC-02_min_stake_0.99_blocked.png](evidence/manual/TC-02_min_stake_0.99_blocked.png) | Manual | TC-02 | PASS |
 | [manual/TC-03_max_stake_100.01_blocked.png](evidence/manual/TC-03_max_stake_100.01_blocked.png) | Manual | TC-03 | PASS |
 | [manual/TC-04_ui_insufficient_balance_blocked.png](evidence/manual/TC-04_ui_insufficient_balance_blocked.png) | Manual | TC-04 (UI) | PASS |
+| [manual/BUG-08_past_match_in_bet_slip.png](evidence/manual/BUG-08_past_match_in_bet_slip.png) | Manual | TC-07 | BUG-08 (PAST match selected, stake entered, Place Bet enabled) |
+| [manual/BUG-08_past_match_bet_accepted.png](evidence/manual/BUG-08_past_match_bet_accepted.png) | Manual | TC-07 | BUG-08 (receipt for a bet on a PAST match) |
 | [automated/pytest-run.txt](evidence/automated/pytest-run.txt) | Automated | TC-01, TC-04 (API) | BUG-01, BUG-02, BUG-06, BUG-07 (asserted); BUG-04 visible in the quoted response body, not asserted |
 | [automated/allure-report/index.html](evidence/automated/allure-report/index.html) | Automated | TC-01, TC-04 (API) | Same run, with steps and attachments |
 
 BUG-03 and BUG-05 were found in exploratory API checks. Their evidence is the request and
-response quoted in the bug reports above.
+response quoted in the bug reports above. The API part of BUG-08 is evidenced the same way,
+in the TC-07 run.
